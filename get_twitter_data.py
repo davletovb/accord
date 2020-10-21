@@ -90,9 +90,12 @@ print(final)
 #Add cleaned text as new column
 
 tweet_df['cleaned'] = final
+
 tweet_df['cleaned'] = tweet_df['cleaned'].str.lower()
 
-tweet_df.head(10)
+tweet_new = tweet_df[tweet_df['cleaned'].str.split().str.len()>1]
 
-tweet_df.to_csv('tweets.csv')
+tweet_new.head(10)
+
+tweet_new.to_csv('tweets.csv')
 !cp tweets.csv "/content/gdrive/My Drive/"
