@@ -57,95 +57,42 @@ pd.set_option('display.max_colwidth', -1)
 tweet_df = pd.DataFrame(tweet_list, columns=['tweet_date', 'tweet_id', 'username', 'name', 'user_id', 'tweet', 'like_count'])
 tweet_df.head()
 
+#Create a column for hashtags
+tweet_df['hashtag'] = tweet_df['tweet'].apply(lambda x: re.findall(r'\B#\w*[a-zA-Z]+\w*', x))
+tweet_df.head(20)
+
+#!pip install tweet-preprocessor
+
+import preprocessor as prep
+
+prep.set_options(prep.OPT.URL, prep.OPT.EMOJI, prep.OPT.MENTION, prep.OPT.SMILEY, prep.OPT.RESERVED)
+
+cleaned = [prep.clean(text) for text in tweet_df['tweet']]
+
+print(cleaned)
+
+#Remove punctuations
+import string
+punctuations = '''!()-=![]{};:+'"\,<>./?@#$%^&*_~'''
+
+regex = re.compile('[%s]' % re.escape(punctuations))
+
+preprocessed = [' '.join(regex.sub(u'', text).split()) for text in cleaned]
+
+print(preprocessed)
+
+#Remove numbers
+
+final = [''.join(re.sub(r'\d', '', text)) for text in preprocessed]
+
+print(final)
+
+#Add cleaned text as new column
+
+tweet_df['cleaned'] = final
+tweet_df['cleaned'] = tweet_df['cleaned'].str.lower()
+
+tweet_df.head(10)
+
 tweet_df.to_csv('tweets.csv')
 !cp tweets.csv "/content/gdrive/My Drive/"
-
-#lower the words
-tweet_df['tweet']=tweet_df['tweet'].str.lower()
-tweet_df.head()
-
-import nltk
-
-#nltk.download()
-
-#!python -m nltk.downloader all
-
-#tokenize the words
-from nltk.tokenize import word_tokenize
-
-tokenized_words=[word_tokenize(tw) for tw in tweet_df['tweet']]
-
-print(tokenized_words)
-
-#tokenize the sentences
-
-from nltk.tokenize import sent_tokenize
-
-tokenized_sent=[sent_tokenize(tw) for tw in tweet_df['tweet']]
-
-print(tokenized_sent)
-
-#remove punctuations
-import string
-
-regex = re.compile('[%s]' % re.escape(string.punctuation))
-
-tokenized_words_punc = []
-
-for comment in tokenized_words:
-  new_comment=[]
-  for token in comment:
-    new_token = regex.sub(u'', token)
-    if not new_token==u'':
-      new_comment.append(new_token)
-
-  tokenized_words_punc.append(new_comment)
-
-print(tokenized_words_punc)
-
-#remove the stopwords
-from nltk.corpus import stopwords
-
-tokenized_words_stop=[]
-
-for doc in tokenized_words_punc:
-  new_term_vector=[]
-  for word in doc:
-    if not word in stopwords.words('english'):
-      new_term_vector.append(word)
-
-  tokenized_words_stop.append(new_term_vector)
-
-print(tokenized_words_stop)
-
-#Stemming of words
-from nltk.stem.porter import PorterStemmer
-
-porter=PorterStemmer()
-
-preprocessed_docs=[]
-
-for doc in tokenized_words_stop:
-  final_doc=[]
-  for word in doc:
-    final_doc.append(porter.stem(word))
-  
-  preprocessed_docs.append(final_doc)
-
-print(preprocessed_docs)
-
-#Lemmatization of words
-from nltk.stem.wordnet import WordNetLemmatizer
-
-wordnet=WordNetLemmatizer()
-
-processed_docs=[]
-
-for doc in preprocessed_docs:
-  last_doc=[]
-  for word in doc:
-    last_doc.append(wordnet.lemmatize(word))
-  
-  processed_docs.append(last_doc)
-
-print(processed_docs)
