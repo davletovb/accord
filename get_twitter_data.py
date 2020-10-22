@@ -42,10 +42,10 @@ maxTweets = 1000 #@param {type:"slider", min:0, max:45000, step:100}
 Filter_Retweets = True #@param {type:"boolean"}
 
 tweet_list=[]
-for tweet in tweepy.Cursor(api.user_timeline, id="jack", include_rts=False).items(maxTweets):
+for tweet in tweepy.Cursor(api.user_timeline, id="jack", include_rts=False, tweet_mode="extended").items(maxTweets):
     #print(tweet.text)
     tweet_list.append([tweet.created_at.date(), 
-                      tweet.id, tweet.user.screen_name, tweet.user.name, tweet.user.id, tweet.text, tweet.favorite_count, 
+                      tweet.id, tweet.user.screen_name, tweet.user.name, tweet.user.id, tweet.full_text, tweet.favorite_count, 
                       ])
     
 #clear_output()
