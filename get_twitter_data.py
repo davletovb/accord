@@ -38,11 +38,11 @@ if (not api):
     print ("Can't Authenticate")
     sys.exit(-1)
 
-maxTweets = 1000 #@param {type:"slider", min:0, max:45000, step:100}
-Filter_Retweets = True #@param {type:"boolean"}
+maxTweets = 1000
+Filter_Retweets = True
 
 tweet_list=[]
-for tweet in tweepy.Cursor(api.user_timeline, id="jack", include_rts=False, tweet_mode="extended").items(maxTweets):
+for tweet in tweepy.Cursor(api.user_timeline, id="balajis", include_rts=False, tweet_mode="extended").items(maxTweets):
     #print(tweet.text)
     tweet_list.append([tweet.created_at.date(), 
                       tweet.id, tweet.user.screen_name, tweet.user.name, tweet.user.id, tweet.full_text, tweet.favorite_count, 
@@ -59,39 +59,99 @@ tweet_df.head()
 
 #Create a column for hashtags
 tweet_df['hashtag'] = tweet_df['tweet'].apply(lambda x: re.findall(r'\B#\w*[a-zA-Z]+\w*', x))
-tweet_df.head(20)
+tweet_df.head(10)
 
-#!pip install tweet-preprocessor
+!pip install tweet-preprocessor
 
 import preprocessor as prep
 
-prep.set_options(prep.OPT.URL, prep.OPT.EMOJI, prep.OPT.MENTION, prep.OPT.SMILEY, prep.OPT.RESERVED)
+prep.set_options(prep.OPT.URL, prep.OPT.EMOJI, prep.OPT.MENTION, prep.OPT.SMILEY, prep.OPT.RESERVED, prep.OPT.NUMBER)
 
 cleaned = [prep.clean(text) for text in tweet_df['tweet']]
 
 print(cleaned)
 
+#!python -m nltk.downloader all
+#!pip install unidecode
+
+import nltk
+from nltk import word_tokenize
+from nltk.corpus import stopwords
+from unidecode import unidecode
+import string
+
+def pre_process(corpus):
+    # convert input corpus to lower case.
+    corpus = corpus.lower()
+    # collecting a list of stop words from nltk and punctuation form
+    # string class and create single array.
+    stopset = stopwords.words('english') + list(string.punctuation)
+    # remove stop words and punctuations from string.
+    # word_tokenize is used to tokenize the input corpus in word tokens.
+    corpus = " ".join([i for i in word_tokenize(corpus) if i not in stopset])
+    # remove digits
+    corpus = "".join([i for i in corpus if not i.isdigit()])
+    # remove non-ascii characters
+    corpus = unidecode(corpus)
+    return corpus
+
+pre_processed = [pre_process(tweet) for tweet in cleaned]
+
+print(pre_processed)
+
+#Normalise words
+#!pip install num2words
+#from num2words import num2words
+#preprocessed = [''.join(re.sub(r'\d', num2words(text))) for text in cleaned]
+#!python -m nltk.downloader all
+#!pip install normalise
+from normalise import normalise
+from nltk.tokenize import word_tokenize
+
+custom_abbr = {
+    "FB":"Facebook",
+    "AR":"Augmented Reality",
+    "VR":"Virtual Reality",
+    "AI":"Artificial Intelligence",
+    "ML":"Machine Learning"
+}
+
+preprocessed = [' '.join(normalise(text, tokenizer=word_tokenize, user_abbrevs=custom_abbr, verbose=False)) for text in cleaned]
+print(preprocessed)
+
 #Remove punctuations
 import string
-punctuations = '''!()-=![]{};:+'"\,<>./?@#$%^&*_~'''
+punctuations = '''!()-=![]{};:+'`"\,<>./?@#$%^&*_~'''
 
 regex = re.compile('[%s]' % re.escape(punctuations))
 
-preprocessed = [' '.join(regex.sub(u'', text).split()) for text in cleaned]
+pre_final = [' '.join(regex.sub(u' ', text).split()) for text in pre_processed]
 
-print(preprocessed)
+print(pre_final)
 
-#Remove numbers
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
 
-final = [''.join(re.sub(r'\d', '', text)) for text in preprocessed]
+lemmatizer = WordNetLemmatizer()
+
+final=[]
+for tweet in pre_final:
+  words = []
+  tokens = word_tokenize(tweet)
+  for token in tokens:
+    if len(token)>2:
+      words.append(lemmatizer.lemmatize(token))
+    else:
+      continue
+      #words.append(token)
+  final.append(words)
 
 print(final)
 
 #Add cleaned text as new column
 
-tweet_df['cleaned'] = final
-
-tweet_df['cleaned'] = tweet_df['cleaned'].str.lower()
+tweet_df['cleaned'] = pre_final
+tweet_df['tokens'] = final
 
 tweet_new = tweet_df[tweet_df['cleaned'].str.split().str.len()>1]
 
