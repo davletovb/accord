@@ -122,15 +122,6 @@ pre_processed = [pre_process(tweet) for tweet in cleaned]
 
 print(pre_processed)
 
-import nltk
-from nltk import word_tokenize
-from nltk.corpus import stopwords
-from unidecode import unidecode
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
-
-import string
-
 lemmatizer = WordNetLemmatizer()
 punctuations = '''!()-=![]{};:+'`"\,<>./?@#$%^&*_~'''
 
