@@ -38,11 +38,10 @@ if (not api):
     print ("Can't Authenticate")
     sys.exit(-1)
 
-maxTweets = 1000
-Filter_Retweets = True
+max_tweets = 1000
 
 tweet_list=[]
-for tweet in tweepy.Cursor(api.user_timeline, id="balajis", include_rts=False, tweet_mode="extended").items(maxTweets):
+for tweet in tweepy.Cursor(api.user_timeline, id="balajis", include_rts=False, tweet_mode="extended").items(max_tweets):
     #print(tweet.text)
     tweet_list.append([tweet.created_at.date(), 
                       tweet.id, tweet.user.screen_name, tweet.user.name, tweet.user.id, tweet.full_text, tweet.favorite_count, 
@@ -71,77 +70,42 @@ cleaned = [prep.clean(text) for text in tweet_df['tweet']]
 
 print(cleaned)
 
-#!python -m nltk.downloader all
-#!pip install unidecode
 
+#!pip install unidecode
+#!python -m nltk.downloader all
+
+import string
 import nltk
 from nltk import word_tokenize
 from nltk.corpus import stopwords
 from unidecode import unidecode
 from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
+#from nltk.tokenize import word_tokenize
+from nltk.tokenize import TweetTokenizer
 
-import string
-
-lemmatizer = WordNetLemmatizer()
-
-def lemmatize(corpus):
-    lemmatized=[]
-    tokens=word_tokenize(corpus)
-    for token in tokens:
-      if len(token)>2:
-        #stemmed_token=stemmer.stem(token)
-        lemmatized_token1=lemmatizer.lemmatize(token, pos="n")
-        lemmatized_token2=lemmatizer.lemmatize(lemmatized_token1, pos="v")
-        lemmatized_token3=lemmatizer.lemmatize(lemmatized_token2, pos="a")
-        lemmatized_token=lemmatizer.lemmatize(lemmatized_token3, pos="r")
-        lemmatized.append(lemmatized_token)
-      elif len(token)==2:
-        lemmatized.append(token)
-      else:
-        lemmatized.append("")
-    return " ".join([i for i in lemmatized])
-
-def pre_process(corpus):
-    # convert input corpus to lower case.
-    corpus = corpus.lower()
-    corpus = lemmatize(corpus)
-    # collecting a list of stop words from nltk and punctuation form
-    # string class and create single array.
-    stopset = stopwords.words('english') + list(string.punctuation)
-    # remove stop words and punctuations from string.
-    # word_tokenize is used to tokenize the input corpus in word tokens.
-    corpus = " ".join([i for i in word_tokenize(corpus) if i not in stopset])
-    # remove digits
-    corpus = "".join([i for i in corpus if not i.isdigit()])
-    # remove non-ascii characters
-    corpus = unidecode(corpus)
-    return corpus
-
-pre_processed = [pre_process(tweet) for tweet in cleaned]
-
-print(pre_processed)
-
+tokenizer = TweetTokenizer()
 lemmatizer = WordNetLemmatizer()
 punctuations = '''!()-=![]{};:+'`"\,<>./?@#$%^&*_~'''
+stopset = stopwords.words('english')
 
 def lemmatize(token):
     lemmatized_token1=lemmatizer.lemmatize(token, pos="n")
     lemmatized_token2=lemmatizer.lemmatize(lemmatized_token1, pos="v")
     lemmatized_token3=lemmatizer.lemmatize(lemmatized_token2, pos="a")
-    lemmatized_token=lemmatizer.lemmatize(lemmatized_token3, pos="r")
-    return lemmatized_token
+    #lemmatized_token=lemmatizer.lemmatize(lemmatized_token3, pos="r")
+    return lemmatized_token3
 
 def pre_process(corpus):
     corpus = corpus.lower()
-    stopset = stopwords.words('english') + list(punctuations)
-    tokens = word_tokenize(corpus)
+    tokens = tokenizer.tokenize(corpus)
     cleaned_corpus=[]
     for token in tokens:
-      if ((token not in stopset) or (not token.isdigit)):
-        lemmatized_token = lemmatize(token)
-        cleaned_token = unidecode(lemmatized_token)
-        cleaned_corpus.append(cleaned_token)
+      token = ''.join([i for i in token if not i.isdigit()])
+      if ((token not in stopset) and (len(token)>1)):
+        token = lemmatize(token)
+        token = token.translate(str.maketrans('', '', string.punctuation))
+        token = unidecode(token)
+        cleaned_corpus.append(token)
       else:
         continue
     return cleaned_corpus
@@ -150,62 +114,6 @@ pre_processed = [pre_process(tweet) for tweet in cleaned]
 
 print(pre_processed)
 
-#Normalise words
-#!pip install num2words
-#from num2words import num2words
-#preprocessed = [''.join(re.sub(r'\d', num2words(text))) for text in cleaned]
-#!python -m nltk.downloader all
-#!pip install normalise
-from normalise import normalise
-from nltk.tokenize import word_tokenize
-
-custom_abbr = {
-    "FB":"Facebook",
-    "AR":"Augmented Reality",
-    "VR":"Virtual Reality",
-    "AI":"Artificial Intelligence",
-    "ML":"Machine Learning"
-}
-
-preprocessed = [' '.join(normalise(text, tokenizer=word_tokenize, user_abbrevs=custom_abbr, verbose=False)) for text in pre_processed]
-print(preprocessed)
-
-#Remove punctuations
-import string
-punctuations = '''!()-=![]{};:+'`"\,<>./?@#$%^&*_~'''
-
-regex = re.compile('[%s]' % re.escape(punctuations))
-
-pre_final = [' '.join(regex.sub(u' ', text).split()) for text in pre_processed]
-
-print(pre_final)
-
-from nltk.stem.porter import PorterStemmer
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
-
-stemmer = PorterStemmer()
-lemmatizer = WordNetLemmatizer()
-
-lemmatized=[]
-for tweet in cleaned:
-  words = []
-  tokens = word_tokenize(tweet)
-  for token in tokens:
-    if len(token)>2:
-      #stemmed_token=stemmer.stem(token)
-      lemmatized_token1=lemmatizer.lemmatize(token, pos="n")
-      lemmatized_token2=lemmatizer.lemmatize(lemmatized_token1, pos="v")
-      lemmatized_token3=lemmatizer.lemmatize(lemmatized_token2, pos="a")
-      lemmatized_token=lemmatizer.lemmatize(lemmatized_token3, pos="r")
-      words.append(lemmatized_token)
-    elif len(token)==2:
-      words.append(token)
-    else:
-      continue
-  lemmatized.append(words)
-
-print(lemmatized)
 
 #Add cleaned text as new column
 
