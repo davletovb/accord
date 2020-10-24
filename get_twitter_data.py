@@ -85,25 +85,26 @@ from nltk.tokenize import TweetTokenizer
 
 tokenizer = TweetTokenizer()
 lemmatizer = WordNetLemmatizer()
-punctuations = '''!()-=![]{};:+'`"\,<>./?@#$%^&*_~'''
+punctuations = '''!()-=![]{};:+`'"\,<>./?@#$%^&*_~'''
 stopset = stopwords.words('english')
 
 def lemmatize(token):
-    lemmatized_token1=lemmatizer.lemmatize(token, pos="n")
-    lemmatized_token2=lemmatizer.lemmatize(lemmatized_token1, pos="v")
+    lemmatized_token1=lemmatizer.lemmatize(token, pos="v")
+    lemmatized_token2=lemmatizer.lemmatize(lemmatized_token1, pos="n")
     lemmatized_token3=lemmatizer.lemmatize(lemmatized_token2, pos="a")
-    #lemmatized_token=lemmatizer.lemmatize(lemmatized_token3, pos="r")
-    return lemmatized_token3
+    lemmatized_token=lemmatizer.lemmatize(lemmatized_token3, pos="r")
+    return lemmatized_token
 
 def pre_process(corpus):
     corpus = corpus.lower()
+    corpus = corpus.translate(str.maketrans(punctuations, ' '*len(punctuations)))
     tokens = tokenizer.tokenize(corpus)
     cleaned_corpus=[]
     for token in tokens:
       token = ''.join([i for i in token if not i.isdigit()])
-      if ((token not in stopset) and (len(token)>1)):
+      if ((token not in stopset) and (len(token)>2)):
         token = lemmatize(token)
-        token = token.translate(str.maketrans('', '', string.punctuation))
+        token = token.translate(str.maketrans(string.punctuation, ' '*len(string.punctuation)))
         token = unidecode(token)
         cleaned_corpus.append(token)
       else:
