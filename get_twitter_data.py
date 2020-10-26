@@ -87,6 +87,16 @@ lemmatizer = WordNetLemmatizer()
 punctuations = '''!()-=![]{};:+`'"\,<>./?@#$%^&*_~'''
 stopset = stopwords.words('english')
 
+abbrevs = {
+    'dm': 'direct message',
+    'ai':'artificial intelligence',
+    'ar':'augmented reality',
+    'vr':'virtual reality',
+    'ml':'machine learning',
+    'btc':'bitcoin',
+    'eth':'ethereum'
+}
+
 def lemmatize(token):
     lemmatized_token1=lemmatizer.lemmatize(token, pos="v")
     lemmatized_token2=lemmatizer.lemmatize(lemmatized_token1, pos="n")
