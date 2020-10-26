@@ -64,12 +64,11 @@ tweet_df.head(10)
 
 import preprocessor as prep
 
-prep.set_options(prep.OPT.URL, prep.OPT.EMOJI, prep.OPT.MENTION, prep.OPT.SMILEY, prep.OPT.RESERVED, prep.OPT.NUMBER)
+prep.set_options(prep.OPT.URL, prep.OPT.MENTION)
 
 cleaned = [prep.clean(text) for text in tweet_df['tweet']]
 
 print(cleaned)
-
 
 #!pip install unidecode
 #!python -m nltk.downloader all
@@ -115,8 +114,9 @@ pre_processed = [pre_process(tweet) for tweet in cleaned]
 
 print(pre_processed)
 
-
 #Add cleaned text as new column
+punctuations = '''!()-=![]{};:+`'“”"\,<>./?@#$%^&*_~'''
+cleaned = [text.lower().translate(str.maketrans(punctuations, ' '*len(punctuations))) for text in cleaned]
 
 tweet_df['cleaned'] = cleaned
 tweet_df['tokens'] = pre_processed
