@@ -137,3 +137,10 @@ tweet_new.head(10)
 
 tweet_new.to_csv('tweets.csv')
 !cp tweets.csv "/content/gdrive/My Drive/"
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+tfidf = TfidfVectorizer().fit_transform(cleaned)
+#vect = TfidfVectorizer(min_df=1, stop_words="english")                                                                                                                                                                                                
+#tfidf = vect.fit_transform(tokens)                                                                                                                                                                                                                    
+pairwise_similarity = tfidf * tfidf.T
