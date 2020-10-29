@@ -16,11 +16,33 @@ from tweepy import OAuthHandler
 
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
 
 from os import path
-from PIL import Image
-from wordcloud import WordCloud, STOPWORDS
+
+import re
+from sklearn.feature_extraction.text import TfidfVectorizer 
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics.pairwise import euclidean_distances
+
+import gensim.downloader as api
+from gensim.models.word2vec import Word2Vec
+
+!pip install sentence_transformers
+!pip install tweet-preprocessor
+!pip install unidecode
+!python -m nltk.downloader all
+
+from sentence_transformers import SentenceTransformer
+import preprocessor as prep
+
+import string
+import nltk
+from nltk import word_tokenize
+from nltk.corpus import stopwords
+from unidecode import unidecode
+from nltk.stem import WordNetLemmatizer
+#from nltk.tokenize import word_tokenize
+from nltk.tokenize import TweetTokenizer
 
 from google.colab import drive
 drive.mount('/content/gdrive')
@@ -38,16 +60,17 @@ if (not api):
     print ("Can't Authenticate")
     sys.exit(-1)
 
+docs = []
+
 max_tweets = 1000
 
 tweet_list=[]
-for tweet in tweepy.Cursor(api.user_timeline, id="balajis", include_rts=False, tweet_mode="extended").items(max_tweets):
-    #print(tweet.text)
+for tweet in tweepy.Cursor(api.user_timeline, id="nntaleb", include_rts=False, tweet_mode="extended").items(max_tweets):
+
     tweet_list.append([tweet.created_at.date(), 
                       tweet.id, tweet.user.screen_name, tweet.user.name, tweet.user.id, tweet.full_text, tweet.favorite_count, 
                       ])
-    
-#clear_output()
+
 print("Downloaded {0} tweets".format(len(tweet_list)))
 
 pd.set_option('display.max_colwidth', -1)
@@ -60,9 +83,7 @@ tweet_df.head()
 tweet_df['hashtag'] = tweet_df['tweet'].apply(lambda x: re.findall(r'\B#\w*[a-zA-Z]+\w*', x))
 tweet_df.head(10)
 
-!pip install tweet-preprocessor
-
-import preprocessor as prep
+stopset = stopwords.words('english')
 
 prep.set_options(prep.OPT.URL, prep.OPT.MENTION)
 
@@ -70,17 +91,24 @@ cleaned = [prep.clean(text) for text in tweet_df['tweet']]
 
 print(cleaned)
 
-#!pip install unidecode
-#!python -m nltk.downloader all
+tweet_df['cleaned'] = cleaned
 
-import string
-import nltk
-from nltk import word_tokenize
-from nltk.corpus import stopwords
-from unidecode import unidecode
-from nltk.stem import WordNetLemmatizer
-#from nltk.tokenize import word_tokenize
-from nltk.tokenize import TweetTokenizer
+tweet_df['cleaned'] = tweet_df.cleaned.apply(lambda x: " ".join(re.sub(r'[^a-zA-Z]',' ',w).lower() for w in x.split() if re.sub(r'[^a-zA-Z]',' ',w).lower() not in stopset))
+
+tweet_df.head(10)
+
+doc = ""
+
+for item in cleaned:
+  doc = doc + " " + item 
+
+docs.append([tweet_list[0][2], tweet_list[0][4], doc])
+
+print(docs)
+
+doc = pd.DataFrame(docs, columns=["username", "userid","tweets"])
+
+doc.head(5)
 
 tokenizer = TweetTokenizer()
 lemmatizer = WordNetLemmatizer()
@@ -125,7 +153,7 @@ pre_processed = [pre_process(tweet) for tweet in cleaned]
 print(pre_processed)
 
 #Add cleaned text as new column
-punctuations = '''!()-=![]{};:+`'“”"\,<>./?@#$%^&*_~'''
+punctuations = '''0123456789!()-=![]{};:+`'“”"\,<>./?@#$%^&*_~'''
 cleaned = [text.lower().translate(str.maketrans(punctuations, ' '*len(punctuations))) for text in cleaned]
 
 tweet_df['cleaned'] = cleaned
@@ -138,9 +166,77 @@ tweet_new.head(10)
 tweet_new.to_csv('tweets.csv')
 !cp tweets.csv "/content/gdrive/My Drive/"
 
-from sklearn.feature_extraction.text import TfidfVectorizer
+info = api.info()
 
-tfidf = TfidfVectorizer().fit_transform(cleaned)
-#vect = TfidfVectorizer(min_df=1, stop_words="english")                                                                                                                                                                                                
-#tfidf = vect.fit_transform(tokens)                                                                                                                                                                                                                    
-pairwise_similarity = tfidf * tfidf.T
+model = api.load("glove-twitter-200")
+
+cat=model.word_vec("cat")
+avg=numpy.zeros(len(cat))
+
+tokens = [item for sublist in pre_processed for item in sublist]
+doc = [" ".join(item) for item in pre_processed]
+print(doc)
+
+count = 1
+for word in tokens:
+  try:
+    avg = avg + numpy.array(model.word_vec(word))
+    count = count + 1
+  except KeyError: pass
+avg /= count 
+i=200
+model.most_similar("startup")
+#model.similar_by_vector(avg, topn=1000)[i:i+100]
+
+doc['tweets'] = doc.tweets.apply(lambda x: " ".join(re.sub(r'[^a-zA-Z]',' ',w).lower() for w in x.split() if re.sub(r'[^a-zA-Z]',' ',w).lower() not in stopset))
+
+doc.head(5)
+
+tfidfvectoriser=TfidfVectorizer(max_features=64)
+tfidfvectoriser.fit(doc.tweets)
+tfidf_vectors=tfidfvectoriser.transform(doc.tweets)
+
+tfidf_vectors.shape
+
+tfidf_vectors=tfidf_vectors.toarray()
+print (tfidf_vectors[0])
+
+pairwise_similarities=np.dot(tfidf_vectors,tfidf_vectors.T)
+pairwise_differences=euclidean_distances(tfidf_vectors)
+
+print(tfidf_vectors[0])
+print(pairwise_similarities.shape)
+print(pairwise_similarities[0][:])
+
+def most_similar(doc_id,similarity_matrix,matrix):
+    print (f'Document: {doc.iloc[doc_id]["tweets"]}')
+    print ('\n')
+    print (f'Similar Documents using {matrix}:')
+    if matrix=='Cosine Similarity':
+        similar_ix=np.argsort(similarity_matrix[doc_id])[::-1]
+    elif matrix=='Euclidean Distance':
+        similar_ix=np.argsort(similarity_matrix[doc_id])
+    for ix in similar_ix:
+        if ix==doc_id:
+            continue
+        print('\n')
+        print (f'Document: {doc.iloc[ix]["tweets"]}')
+        print (f'{matrix} : {similarity_matrix[doc_id][ix]}')
+
+most_similar(1,pairwise_similarities,'Cosine Similarity')
+
+most_similar(1,pairwise_differences,'Euclidean Distance')
+
+#!pip install sentence_transformers
+from sentence_transformers import SentenceTransformer
+
+sbert_model = SentenceTransformer('bert-base-nli-mean-tokens')
+
+document_embeddings = sbert_model.encode(doc['tweets'])
+
+pairwise_similarities=cosine_similarity(document_embeddings)
+pairwise_differences=euclidean_distances(document_embeddings)
+
+most_similar(1,pairwise_similarities,'Cosine Similarity')
+
+most_similar(1,pairwise_differences,'Euclidean Distance')
