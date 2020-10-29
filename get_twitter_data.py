@@ -32,7 +32,7 @@ from gensim.models.word2vec import Word2Vec
 !pip install unidecode
 !python -m nltk.downloader all
 
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer, util
 import preprocessor as prep
 
 import string
@@ -230,7 +230,7 @@ most_similar(1,pairwise_differences,'Euclidean Distance')
 #!pip install sentence_transformers
 from sentence_transformers import SentenceTransformer
 
-sbert_model = SentenceTransformer('bert-base-nli-mean-tokens')
+sbert_model = SentenceTransformer('roberta-large-nli-stsb-mean-tokens')
 
 document_embeddings = sbert_model.encode(doc['tweets'])
 
