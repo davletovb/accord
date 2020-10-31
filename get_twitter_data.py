@@ -240,3 +240,17 @@ pairwise_differences=euclidean_distances(document_embeddings)
 most_similar(1,pairwise_similarities,'Cosine Similarity')
 
 most_similar(1,pairwise_differences,'Euclidean Distance')
+	      
+	       
+import spacy
+
+nlp = spacy.load('en_core_web_lg')
+
+doc1 = nlp("Put another way, we have millions of independent replications btc (and billions of devices) that give experimental confirmation of Maxwell’s equations. That’s science. And that’s very different from some just-published data analysis. That’s not “science”, it’s a provisional result.")
+doc2 = nlp("A giraffe can eat up to 75 pounds of Acacia leaves and hay daily")
+	       
+print(doc1.vector_norm)
+print(doc2.vector_norm)
+
+print(doc1.vector.dtype)
+print(doc1.vector.shape)
