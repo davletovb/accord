@@ -30,9 +30,12 @@ from gensim.models.word2vec import Word2Vec
 !pip install sentence_transformers
 !pip install tweet-preprocessor
 !pip install unidecode
+!pip install emoji
+!pip install annoy
+!python -m spacy download en_core_web_lg
 !python -m nltk.downloader all
 
-from sentence_transformers import SentenceTransformer, util
+from sentence_transformers import SentenceTransformer
 import preprocessor as prep
 
 import string
@@ -60,15 +63,13 @@ if (not api):
     print ("Can't Authenticate")
     sys.exit(-1)
 
-docs = []
-
 max_tweets = 1000
 
 tweet_list=[]
-for tweet in tweepy.Cursor(api.user_timeline, id="nntaleb", include_rts=False, tweet_mode="extended").items(max_tweets):
+for tweet in tweepy.Cursor(api.user_timeline, id="balajis", include_rts=False, tweet_mode="extended").items(max_tweets):
 
-    tweet_list.append([tweet.created_at.date(), 
-                      tweet.id, tweet.user.screen_name, tweet.user.name, tweet.user.id, tweet.full_text, tweet.favorite_count, 
+    tweet_list.append([ 
+                      tweet.id, tweet.created_at.date(), tweet.user.screen_name, tweet.user.name, tweet.user.id, tweet.favorite_count, tweet.retweet_count, tweet.full_text
                       ])
 
 print("Downloaded {0} tweets".format(len(tweet_list)))
@@ -76,43 +77,60 @@ print("Downloaded {0} tweets".format(len(tweet_list)))
 pd.set_option('display.max_colwidth', -1)
 
 # load it into a pandas dataframe
-tweet_df = pd.DataFrame(tweet_list, columns=['tweet_date', 'tweet_id', 'username', 'name', 'user_id', 'tweet', 'like_count'])
+tweet_df = pd.DataFrame(tweet_list, columns=['tweet_id', 'tweet_date', 'username', 'name', 'user_id', 'like_count', 'retweet_count', 'text'])
 tweet_df.head()
 
 #Create a column for hashtags
-tweet_df['hashtag'] = tweet_df['tweet'].apply(lambda x: re.findall(r'\B#\w*[a-zA-Z]+\w*', x))
+tweet_df.insert(loc=7, column='hashtag', value=tweet_df['text'].apply(lambda x: re.findall(r'\B#\w*[a-zA-Z]+\w*', x)))
 tweet_df.head(10)
 
+def remove_emojis(data):
+    emoj = re.compile("["
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+        u"\U00002500-\U00002BEF"  # chinese char
+        u"\U00002702-\U000027B0"
+        u"\U00002702-\U000027B0"
+        u"\U000024C2-\U0001F251"
+        u"\U0001f926-\U0001f937"
+        u"\U00010000-\U0010ffff"
+        u"\u2640-\u2642" 
+        u"\u2600-\u2B55"
+        u"\u200d"
+        u"\u23cf"
+        u"\u23e9"
+        u"\u231a"
+        u"\ufe0f"  # dingbats
+        u"\u3030"
+                      "]+", re.UNICODE)
+    return re.sub(emoj, '', data)
+
 stopset = stopwords.words('english')
+punctuations = '''!()-=—!→–[]|{};:+`"“”\,<>/@#$%^&*_~'''
 
 prep.set_options(prep.OPT.URL, prep.OPT.MENTION)
 
-cleaned = [prep.clean(text) for text in tweet_df['tweet']]
+cleaned = [prep.clean(text) for text in tweet_df['text']]
 
 print(cleaned)
 
 tweet_df['cleaned'] = cleaned
 
-tweet_df['cleaned'] = tweet_df.cleaned.apply(lambda x: " ".join(re.sub(r'[^a-zA-Z]',' ',w).lower() for w in x.split() if re.sub(r'[^a-zA-Z]',' ',w).lower() not in stopset))
+#tweet_df['cleaned'] = tweet_df.cleaned.apply(lambda x: " ".join(re.sub(r'[^a-zA-Z]',' ',w).lower() for w in x.split() if re.sub(r'[^a-zA-Z]',' ',w).lower() not in stopset))
+
+tweet_df['cleaned'] = tweet_df.cleaned.apply(lambda x: x.translate(str.maketrans(punctuations, ' '*len(punctuations))))
+tweet_df['cleaned'] = tweet_df.cleaned.apply(lambda x: remove_emojis(x))
+tweet_df['cleaned'] = tweet_df.cleaned.apply(lambda x: x.replace('...',' '))
+tweet_df['cleaned'] = tweet_df.cleaned.apply(lambda x: ' '.join(x.split()))
+
 
 tweet_df.head(10)
 
-doc = ""
-
-for item in cleaned:
-  doc = doc + " " + item 
-
-docs.append([tweet_list[0][2], tweet_list[0][4], doc])
-
-print(docs)
-
-doc = pd.DataFrame(docs, columns=["username", "userid","tweets"])
-
-doc.head(5)
-
 tokenizer = TweetTokenizer()
 lemmatizer = WordNetLemmatizer()
-punctuations = '''!()-=![]{};:+`'"\,<>./?@#$%^&*_~'''
+punctuations = '''!0123456789()-=—!→–[]{};:+`'"“”\,<>.?/@#$%^&*_~'''
 stopset = stopwords.words('english')
 
 abbrevs = {
@@ -141,7 +159,7 @@ def pre_process(corpus):
       token = ''.join([i for i in token if not i.isdigit()])
       if ((token not in stopset) and (len(token)>2)):
         token = lemmatize(token)
-        token = token.translate(str.maketrans(string.punctuation, ' '*len(string.punctuation)))
+        token = token.translate(str.maketrans('', '', string.punctuation))
         token = unidecode(token)
         cleaned_corpus.append(token)
       else:
@@ -153,104 +171,126 @@ pre_processed = [pre_process(tweet) for tweet in cleaned]
 print(pre_processed)
 
 #Add cleaned text as new column
-punctuations = '''0123456789!()-=![]{};:+`'“”"\,<>./?@#$%^&*_~'''
-cleaned = [text.lower().translate(str.maketrans(punctuations, ' '*len(punctuations))) for text in cleaned]
+#punctuations = '''0123456789!()-=![]{};:.?+`'“”"\,<>/@#$%^&*_~'''
+#cleaned = [text.lower().translate(str.maketrans(punctuations, ' '*len(punctuations))) for text in cleaned]
 
-tweet_df['cleaned'] = cleaned
+#tweet_df['cleaned'] = cleaned
 tweet_df['tokens'] = pre_processed
 
-tweet_new = tweet_df[tweet_df['cleaned'].str.split().str.len()>1]
+#tweet_new = tweet_df[tweet_df['cleaned'].str.split().str.len()>1]
 
-tweet_new.head(10)
+tweet_df.head(10)
 
-tweet_new.to_csv('tweets.csv')
-!cp tweets.csv "/content/gdrive/My Drive/"
+docs = []
+doc = ""
+words = ""
 
-info = api.info()
-
-model = api.load("glove-twitter-200")
-
-cat=model.word_vec("cat")
-avg=numpy.zeros(len(cat))
-
+cleaned = tweet_df['cleaned'].tolist()
 tokens = [item for sublist in pre_processed for item in sublist]
-doc = [" ".join(item) for item in pre_processed]
-print(doc)
+words = " ".join(tokens)
 
-count = 1
-for word in tokens:
-  try:
-    avg = avg + numpy.array(model.word_vec(word))
-    count = count + 1
-  except KeyError: pass
-avg /= count 
-i=200
-model.most_similar("startup")
-#model.similar_by_vector(avg, topn=1000)[i:i+100]
+doc = " ".join(cleaned)
 
-doc['tweets'] = doc.tweets.apply(lambda x: " ".join(re.sub(r'[^a-zA-Z]',' ',w).lower() for w in x.split() if re.sub(r'[^a-zA-Z]',' ',w).lower() not in stopset))
+docs.append([tweet_list[0][4], tweet_list[0][2], doc, words])
 
-doc.head(5)
+print(docs)
 
-tfidfvectoriser=TfidfVectorizer(max_features=64)
-tfidfvectoriser.fit(doc.tweets)
-tfidf_vectors=tfidfvectoriser.transform(doc.tweets)
+doc_df = pd.DataFrame(docs, columns=["userid","username","tweets","words"])
 
-tfidf_vectors.shape
+doc_df.head(5)
 
-tfidf_vectors=tfidf_vectors.toarray()
-print (tfidf_vectors[0])
+tweet_df.to_csv('tweets.csv')
+doc_df.to_csv('doc.csv')
+!cp tweets.csv "/content/gdrive/My Drive/"
+!cp doc.csv "/content/gdrive/My Drive/"
 
-pairwise_similarities=np.dot(tfidf_vectors,tfidf_vectors.T)
-pairwise_differences=euclidean_distances(tfidf_vectors)
+import tensorflow_hub as hub
 
-print(tfidf_vectors[0])
-print(pairwise_similarities.shape)
-print(pairwise_similarities[0][:])
+embed = hub.load("https://tfhub.dev/google/universal-sentence-encoder-large/5")
+#embeddings = embed([doc])
 
-def most_similar(doc_id,similarity_matrix,matrix):
-    print (f'Document: {doc.iloc[doc_id]["tweets"]}')
-    print ('\n')
-    print (f'Similar Documents using {matrix}:')
-    if matrix=='Cosine Similarity':
-        similar_ix=np.argsort(similarity_matrix[doc_id])[::-1]
-    elif matrix=='Euclidean Distance':
-        similar_ix=np.argsort(similarity_matrix[doc_id])
-    for ix in similar_ix:
-        if ix==doc_id:
-            continue
-        print('\n')
-        print (f'Document: {doc.iloc[ix]["tweets"]}')
-        print (f'{matrix} : {similarity_matrix[doc_id][ix]}')
+#print(embeddings)
 
-most_similar(1,pairwise_similarities,'Cosine Similarity')
+class MeanEmbeddingVectorizer(object):
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+        if len(tokenizer)>0:
+          self.dim=20 #len(tokenizer[next(iter("test"))])
+        else:
+          self.dim=0
+            
+    def fit(self, X, y):
+        return self 
 
-most_similar(1,pairwise_differences,'Euclidean Distance')
+    def transform(self, X):
+        return np.array([
+            np.mean([torch.tensor([self.tokenizer.encode(sentence)]) for sentence in sentences] 
+                    or [np.zeros(self.dim)], axis=0)
+            for sentences in X
+        ])
 
-#!pip install sentence_transformers
-from sentence_transformers import SentenceTransformer
+#tweets = tweet_df['cleaned'].tolist()
 
-sbert_model = SentenceTransformer('roberta-large-nli-stsb-mean-tokens')
+#for tweet in tweets:
+  #print(tokenizer2.encode(tweet))
+#meanvec = MeanEmbeddingVectorizer(tokenizer2)
+#meanvec.transform(tweet_df['cleaned'].tolist())
 
-document_embeddings = sbert_model.encode(doc['tweets'])
+#meanvec = np.mean([embed([tweet]) for tweet in tweets], axis=0)
+#print(meanvec)
 
-pairwise_similarities=cosine_similarity(document_embeddings)
-pairwise_differences=euclidean_distances(document_embeddings)
+tweets = tweet_df['cleaned'].tolist()
 
-most_similar(1,pairwise_similarities,'Cosine Similarity')
+vecs = [embed([tweet]) for tweet in tweets]
 
-most_similar(1,pairwise_differences,'Euclidean Distance')
-	      
-	       
+vecs = np.array(vecs)
+
+#vecs = vecs.reshape((vecs.shape[0], -1), order='F')
+#vecs.shape
+
+mean_vec_transformer = np.array([np.mean(vecs, axis=0)])
+print(mean_vec_transformer)
+
+#!python -m spacy download en_core_web_lg
 import spacy
 
-nlp = spacy.load('en_core_web_lg')
 
-doc1 = nlp("Put another way, we have millions of independent replications btc (and billions of devices) that give experimental confirmation of Maxwell’s equations. That’s science. And that’s very different from some just-published data analysis. That’s not “science”, it’s a provisional result.")
-doc2 = nlp("A giraffe can eat up to 75 pounds of Acacia leaves and hay daily")
-	       
-print(doc1.vector_norm)
-print(doc2.vector_norm)
+nlp = spacy.load("en_core_web_lg")
 
-print(doc1.vector.dtype)
-print(doc1.vector.shape)
+all_words = set(word for word in tokens)
+print(tokens)
+#word2vectors = {}
+#for word in tokens:
+#  if word in all_words:
+#    nums=np.array(nlp(word).vector, dtype=np.float32)
+#    word2vectors[word] = nums
+
+print(all_words)
+
+tfidf = TfidfVectorizer()
+tfidf.fit(tokens)
+word2weight = dict(zip(tfidf.get_feature_names(), tfidf.idf_))
+print(word2weight)
+
+word2vec = {}
+
+for word in all_words:
+  word2vec[word] = nlp(word).vector
+
+mean_vec_tfidf = np.array([np.mean([word2vec[w] * word2weight[w] for w in tokens], axis=0)])
+print(mean_vec_tfidf)
+
+"""**ANN for vector index**"""
+
+#!pip install --user annoy
+from annoy import AnnoyIndex
+#USE emits 512 dimensional vectors
+D=512
+
+#Default number of trees
+NUM_TREES=10
+
+ann = AnnoyIndex(D, 'angular')
+ann.add_item(0, mean_vec_transformer[0])
+ann.build(NUM_TREES)
+ann.save("index.ann")
