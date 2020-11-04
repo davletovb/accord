@@ -31,7 +31,6 @@ from gensim.models.word2vec import Word2Vec
 !pip install tweet-preprocessor
 !pip install unidecode
 !pip install emoji
-!pip install annoy
 !python -m spacy download en_core_web_lg
 !python -m nltk.downloader all
 
@@ -282,15 +281,21 @@ print(mean_vec_tfidf)
 
 """**ANN for vector index**"""
 
-#!pip install --user annoy
-from annoy import AnnoyIndex
-#USE emits 512 dimensional vectors
-D=512
+!apt install libomp-dev
+!pip install faiss
+import faiss
 
-#Default number of trees
-NUM_TREES=10
+d = 512
 
-ann = AnnoyIndex(D, 'angular')
-ann.add_item(0, mean_vec_transformer[0])
-ann.build(NUM_TREES)
-ann.save("index.ann")
+index = faiss.IndexFlatL2(d)
+print(index.is_trained)
+index.add(mean_vec_transformer)
+print(index.ntotal)
+
+k = 4                          # we want to see 4 nearest neighbors
+D, I = index.search(mean_vec_transformer, k) # sanity check
+print(I)
+print(D)
+D, I = index.search(mean_vec_transformer, k)     # actual search
+print(I[:5])                   # neighbors of the 5 first queries
+print(I[-5:])                  # neighbors of the 5 last queries
