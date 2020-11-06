@@ -7,8 +7,8 @@ import tweepy
 TWITTER_KEY = 'KEY'
 TWITTER_SECRET_KEY = 'SECRET KEY'
 
-def get_tweets(userid):
-    max_tweets = 1000
+def get_tweets(userid, max_tweets = 1000):
+    
     tweet_list = []
 
     auth = tweepy.AppAuthHandler(TWITTER_KEY, TWITTER_SECRET_KEY)
