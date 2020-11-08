@@ -1,4 +1,4 @@
-# twitter-club
+# accord
 
 1. Data cleaning
 Remove URLs, EMOJIs, MENTIONs, SMILEYs
