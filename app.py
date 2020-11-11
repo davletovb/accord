@@ -44,7 +44,7 @@ def api_id():
     if 'id' in request.args:
         id = int(request.args['id'])
     else:
-        return "Error: No id field provided. Please specify an id."
+        return page_not_found(404)
 
     # Create an empty list for our results
     results = []
