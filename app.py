@@ -1,5 +1,7 @@
 import flask
 from flask import request, jsonify
+import json
+import get_tweets
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
@@ -41,8 +43,8 @@ def api_id():
     # Check if an ID was provided as part of the URL.
     # If ID is provided, assign it to a variable.
     # If no ID is provided, display an error in the browser.
-    if 'id' in request.args:
-        id = int(request.args['id'])
+    if 'userid' in request.args:
+        userid = request.args['userid']
     else:
         return page_not_found(404)
 
@@ -52,12 +54,17 @@ def api_id():
     # Loop through the data and match results that fit the requested ID.
     # IDs are unique, but other fields might return many results
     for user in users:
-        if user['id'] == id:
+        if user['id'] == userid:
             results.append(user)
-
+            return jsonify(results)
+        else:
+            user = get_tweets.get_user(userid)
+            user_json = user._json
+            with open('users/' + userid + '.json', 'w') as json_file:
+                json.dump(user_json, json_file, ensure_ascii=False)
+            return user_json
     # Use the jsonify function from Flask to convert our list of
     # Python dictionaries to the JSON format.
-    return jsonify(results)
 
 
 @app.route('/api/v1/resources/users', methods=['GET'])
