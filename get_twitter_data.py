@@ -7,16 +7,16 @@ import tweepy
 TWITTER_KEY = 'KEY'
 TWITTER_SECRET_KEY = 'SECRET KEY'
 
+auth = tweepy.AppAuthHandler(TWITTER_KEY, TWITTER_SECRET_KEY)
+api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+
+if not api:
+    print("Can't Authenticate")
+    sys.exit(-1)
+
 def get_tweets(userid, max_tweets = 1000):
     
     tweet_list = []
-
-    auth = tweepy.AppAuthHandler(TWITTER_KEY, TWITTER_SECRET_KEY)
-    api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
-
-    if not api:
-        print("Can't Authenticate")
-        sys.exit(-1)
 
     for tweet in tweepy.Cursor(api.user_timeline, id=userid, include_rts=False, tweet_mode="extended").items(
             max_tweets):
@@ -35,3 +35,9 @@ def get_tweets(userid, max_tweets = 1000):
     tweet_df.insert(loc=7, column='hashtag',
                     value=tweet_df['text'].apply(lambda x: re.findall(r'\B#\w*[a-zA-Z]+\w*', x)))
     return tweet_df
+
+def get_user(userid):
+
+    user = api.get_user(userid)
+
+    return user
