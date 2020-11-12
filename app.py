@@ -1,7 +1,7 @@
 import flask
 from flask import request, jsonify
 import json
-import get_tweets
+import get_twitter_data
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
@@ -58,7 +58,7 @@ def api_id():
             results.append(user)
             return jsonify(results)
         else:
-            user = get_tweets.get_user(userid)
+            user = get_twitter_data.get_user(userid)
             user_json = user._json
             with open('users/' + userid + '.json', 'w') as json_file:
                 json.dump(user_json, json_file, ensure_ascii=False)
