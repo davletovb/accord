@@ -59,7 +59,6 @@ def get_tweets(userid, max_tweets=1000):
     # Create a column for hashtags
     tweet_df.insert(loc=4, column='hashtag',
                     value=tweet_df['text'].apply(lambda x: re.findall(r'\B#\w*[a-zA-Z]+\w*', x)))
-    tweet_df.to_json('data/' + userid + '.json')
 
     return tweet_df
 
