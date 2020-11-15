@@ -1,7 +1,11 @@
+from concurrent.futures import ThreadPoolExecutor
+
 import flask
 from flask import request, jsonify
-import json
-import get_twitter_data
+
+import get_tweets
+
+executor = ThreadPoolExecutor(max_workers=4)
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
@@ -58,13 +62,10 @@ def api_id():
             results.append(user)
             return jsonify(results)
         else:
-            user = get_twitter_data.get_user(userid)
-            user_json = user._json
-            with open('users/' + userid + '.json', 'w') as json_file:
-                json.dump(user_json, json_file, ensure_ascii=False)
-            return user_json
-    # Use the jsonify function from Flask to convert our list of
-    # Python dictionaries to the JSON format.
+            user = executor.submit(get_tweets.get_user, userid=userid).result()
+            executor.submit(get_tweets.pre_process, userid=userid)
+
+            return user
 
 
 @app.route('/api/v1/resources/users', methods=['GET'])
@@ -100,4 +101,5 @@ def page_not_found(e):
     return "<h1>404</h1><p>The resource could not be found.</p>", 404
 
 
-app.run()
+if __name__ == '__main__':
+    app.run()
