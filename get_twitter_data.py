@@ -3,13 +3,18 @@ import sys
 from multiprocessing.pool import ThreadPool
 from os import path
 
+import numpy as np
 import pandas as pd
 import preprocessor as prep
+import spacy
 import tweepy
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 import get_tokens
 
-pool = ThreadPool(processes=2)
+nlp = spacy.load("en_core_web_lg")
+
+pool = ThreadPool(processes=3)
 
 TWITTER_KEY = 'KEY'
 TWITTER_SECRET_KEY = 'KEY'
@@ -32,14 +37,12 @@ def get_user(userid):
 
 
 def pre_process(userid):
-    if path.exists('data/' + userid + '.json'):
-        tweet_df = pd.read_json('data/' + userid + '.json')
-        return tweet_df
-    else:
+    if not path.exists('data/' + userid + '.json'):
         tweet_df = get_tweets(userid)
-        cleaned_tweet_df = get_clean(tweet_df)
-        cleaned_tweet_df.to_json('data/' + userid + '.json')
-        return cleaned_tweet_df
+        cleaned_tweet_df = get_clean(userid, tweet_df)
+        words = cleaned_tweet_df['tokens'].tolist()
+        print("Tokens saved")
+        vec = mean_tfidf(userid, words)
 
 
 def get_tweets(userid, max_tweets=1000):
@@ -63,7 +66,7 @@ def get_tweets(userid, max_tweets=1000):
     return tweet_df
 
 
-def get_clean(tweet_df):
+def get_clean(userid, tweet_df):
     punctuations = '''!()-=—!→–[]|{};:+`"“”\,<>/@#$%^&*_~'''
 
     prep.set_options(prep.OPT.URL, prep.OPT.MENTION)
@@ -76,8 +79,13 @@ def get_clean(tweet_df):
     tweet_df['cleaned'] = tweet_df.cleaned.apply(lambda x: remove_emojis(x))
     tweet_df['cleaned'] = tweet_df.cleaned.apply(lambda x: x.replace('...', ' '))
     tweet_df['cleaned'] = tweet_df.cleaned.apply(lambda x: ' '.join(x.split()))
+
+    print("Tweets cleaned")
     tokens = [get_tokens.get_tokens(tweet) for tweet in tweet_df['cleaned']]
     tweet_df['tokens'] = tokens
+
+    tweet_df.to_json('data/' + userid + '.json')
+    print('Cleaned tweets saved')
 
     return tweet_df
 
@@ -104,3 +112,23 @@ def remove_emojis(data):
                       u"\u3030"
                       "]+", re.UNICODE)
     return re.sub(emoj, '', data)
+
+
+def mean_tfidf(userid, words):
+    tokens = [item for sublist in words for item in sublist]
+    word2vec = {}
+    tfidf = TfidfVectorizer()
+    all_words = set(word for word in tokens)
+
+    tfidf.fit(tokens)
+    word2weight = dict(zip(tfidf.get_feature_names(), tfidf.idf_))
+
+    for word in all_words:
+        word2vec[word] = nlp(word).vector
+
+    mean_vec_tfidf = np.array([np.mean([word2vec[w] * word2weight[w] for w in tokens], axis=0)])
+    print('Vector calculated')
+
+    np.save('vectors/' + userid + '.npy', mean_vec_tfidf)
+    print('Vector saved')
+    return mean_vec_tfidf
