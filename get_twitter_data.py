@@ -12,6 +12,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import tensorflow_hub as hub
 
 import get_tokens
+import ann_index
 
 embed = hub.load("https://tfhub.dev/google/universal-sentence-encoder-large/5")
 
@@ -43,6 +44,7 @@ def pre_process(userid):
         cleaned_tweet_df = get_cleaned_tweets(userid, tweet_df)
         tweets = cleaned_tweet_df['cleaned'].tolist()
         get_bert(userid, tweets)
+        ann_index.build_index()
         # words = cleaned_tweet_df['tokens'].tolist()
         # tokens = [item for sublist in words for item in sublist]
         # get_vector(userid, tokens)
@@ -148,3 +150,4 @@ def get_bert(userid, corpus):
     np.save('vectors/' + userid + '.npy', mean_vec_bert)
     print('Bert vector saved')
     return mean_vec_bert
+
