@@ -2,32 +2,16 @@ from concurrent.futures import ThreadPoolExecutor
 
 import flask
 from flask import request, jsonify
+import os
+import json
 
+import ann_index
 import get_tweets
 
 executor = ThreadPoolExecutor(max_workers=4)
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
-
-# Create some test data for our catalog in the form of a list of dictionaries.
-users = [
-    {'id': 0,
-     'name': 'Vernor Vinge',
-     'username': 'dunaha',
-     'bio': 'The coldsleep itself was dreamless.',
-     'date': '1992'},
-    {'id': 1,
-     'name': 'Ursula K. Le Guin',
-     'username': 'tandaram',
-     'bio': 'With a clamor of bells that set the swallows soaring, the Festival of Summer came to the city Omelas, bright-towered by the sea.',
-     'date': '1973'},
-    {'id': 2,
-     'name': 'Samuel R. Delany',
-     'username': 'dhalgran',
-     'bio': 'to wound the autumnal city.',
-     'date': '1975'}
-]
 
 
 @app.route('/', methods=['GET'])
@@ -39,6 +23,16 @@ def home():
 # A route to return all of the available entries in our catalog.
 @app.route('/api/v1/resources/users/all', methods=['GET'])
 def api_all():
+    users = []
+    with os.scandir('users/') as entries:
+        for entry in entries:
+            if (entry.name != "index.ann") and (entry.name != "index_map.json"):
+                with open('users/' + entry.name, 'r') as file:
+                    user_profile = json.load(file)
+                users.append(user_profile)
+            else:
+                pass
+
     return jsonify(users)
 
 
@@ -52,46 +46,22 @@ def api_id():
     else:
         return page_not_found(404)
 
-    # Create an empty list for our results
-    results = []
-
     # Loop through the data and match results that fit the requested ID.
     # IDs are unique, but other fields might return many results
-    for user in users:
-        if user['id'] == userid:
-            results.append(user)
-            return jsonify(results)
-        else:
-            user = executor.submit(get_tweets.get_user, userid=userid).result()
-            executor.submit(get_tweets.pre_process, userid=userid)
+    user = executor.submit(get_tweets.get_user, userid=userid).result()
+    executor.submit(get_tweets.pre_process, userid=userid)
 
-            return user
+    return user
 
 
-@app.route('/api/v1/resources/users', methods=['GET'])
+@app.route('/api/v1/resources/neighbors', methods=['GET'])
 def api_filter():
-    query_parameters = request.args
-
-    id = query_parameters.get('id')
-    date = query_parameters.get('date')
-    name = query_parameters.get('name')
-
-    results = []
-
-    if id:
-        for user in users:
-            if user['id'] == id:
-                results.append(user)
-    if date:
-        for user in users:
-            if user['date'] == date:
-                results.append(user)
-    if name:
-        for user in users:
-            if user['name'] == name:
-                results.append(user)
-    if not (id or date or name):
+    if 'userid' in request.args:
+        userid = request.args['userid']
+    else:
         return page_not_found(404)
+
+    results = ann_index.search_index(userid)
 
     return jsonify(results)
 
