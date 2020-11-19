@@ -6,7 +6,7 @@ import os
 import json
 
 import ann_index
-import get_tweets
+import get_twitter_data
 
 executor = ThreadPoolExecutor(max_workers=4)
 
@@ -48,20 +48,20 @@ def api_id():
 
     # Loop through the data and match results that fit the requested ID.
     # IDs are unique, but other fields might return many results
-    user = executor.submit(get_tweets.get_user, userid=userid).result()
-    executor.submit(get_tweets.pre_process, userid=userid)
+    user = executor.submit(get_twitter_data.get_user, userid=userid).result()
+    executor.submit(get_twitter_data.pre_process, userid=userid)
 
     return user
 
 
 @app.route('/api/v1/resources/neighbors', methods=['GET'])
-def api_filter():
+def api_neighbors():
     if 'userid' in request.args:
         userid = request.args['userid']
     else:
         return page_not_found(404)
 
-    results = ann_index.search_index(userid)
+    results = ann_index.search_index(userid, 'word')
 
     return jsonify(results)
 
