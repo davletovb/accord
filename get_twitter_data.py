@@ -11,8 +11,8 @@ import ann_index
 import get_tokens
 import get_vector
 
-TWITTER_KEY = 'rxZKr5xZ9S1b6bG4jIVXVkZqu'
-TWITTER_SECRET_KEY = 'fX1wkeXC9x7y9TcrZyBZx9b6LbVjh0500geu81ysMKpNSDkW2k'
+TWITTER_KEY = 'KEY'
+TWITTER_SECRET_KEY = 'KEY'
 
 auth = tweepy.AppAuthHandler(TWITTER_KEY, TWITTER_SECRET_KEY)
 api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
