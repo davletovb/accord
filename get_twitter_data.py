@@ -3,23 +3,16 @@ import re
 import sys
 from os import path
 
-import numpy as np
 import pandas as pd
 import preprocessor as prep
-import spacy
 import tweepy
-from sklearn.feature_extraction.text import TfidfVectorizer
-import tensorflow_hub as hub
 
-import get_tokens
 import ann_index
+import get_tokens
+import get_vector
 
-embed = hub.load("https://tfhub.dev/google/universal-sentence-encoder-large/5")
-
-nlp = spacy.load("en_core_web_lg")
-
-TWITTER_KEY = 'KEY'
-TWITTER_SECRET_KEY = 'KEY'
+TWITTER_KEY = 'rxZKr5xZ9S1b6bG4jIVXVkZqu'
+TWITTER_SECRET_KEY = 'fX1wkeXC9x7y9TcrZyBZx9b6LbVjh0500geu81ysMKpNSDkW2k'
 
 auth = tweepy.AppAuthHandler(TWITTER_KEY, TWITTER_SECRET_KEY)
 api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
@@ -30,24 +23,35 @@ if not api:
 
 
 def get_user(userid):
-    user = api.get_user(userid)
-    user_json = user._json
-    with open('users/' + userid + '.json', 'w') as json_file:
-        json.dump(user_json, json_file, ensure_ascii=False)
-    print("User profile saved")
-    return user_json
+    if not path.exists('users/' + userid + '.json'):
+        user = api.get_user(userid)
+        user_json = user._json
+        with open('users/' + userid + '.json', 'w') as json_file:
+            json.dump(user_json, json_file, ensure_ascii=False)
+        print("User profile saved")
+        return user_json
+    else:
+        with open('users/' + userid + '.json', 'r') as file:
+            user_json = json.load(file)
+        print("User profile exists")
+        return user_json
 
 
 def pre_process(userid):
     if not path.exists('data/' + userid + '.json'):
         tweet_df = get_tweets(userid)
         cleaned_tweet_df = get_cleaned_tweets(userid, tweet_df)
-        tweets = cleaned_tweet_df['cleaned'].tolist()
-        get_bert(userid, tweets)
-        ann_index.build_index()
-        # words = cleaned_tweet_df['tokens'].tolist()
-        # tokens = [item for sublist in words for item in sublist]
-        # get_vector(userid, tokens)
+        # tweets = cleaned_tweet_df['cleaned'].tolist()
+        # get_vector.get_bert(userid, tweets)
+        words = cleaned_tweet_df['tokens'].tolist()
+        get_vector.mean_tfidf(userid, words)
+        ann_index.build_index('word')
+    else:
+        print("User data already exist")
+        cleaned_tweet_df = pd.read_json('data/' + userid + '.json')
+        words = cleaned_tweet_df['tokens'].tolist()
+        get_vector.mean_tfidf(userid, words)
+        ann_index.build_index('word')
 
 
 def get_tweets(userid, max_tweets=1000):
@@ -117,37 +121,3 @@ def remove_emojis(data):
                       u"\u3030"
                       "]+", re.UNICODE)
     return re.sub(emoj, '', data)
-
-
-def get_vector(userid, tokens):
-    print("Start vectorizer")
-    word2vec = {}
-    tfidf = TfidfVectorizer()
-    all_words = set(word for word in tokens)
-    print("Get word weights")
-    tfidf.fit(tokens)
-    word2weight = dict(zip(tfidf.get_feature_names(), tfidf.idf_))
-    print("Get word vectors")
-    for word in all_words:
-        word2vec[word] = nlp(word).vector
-    print("Get the list of vectors")
-    vectors = [word2vec[w] * word2weight[w] for w in tokens]
-    print("Get the average of vectors")
-    mean_vector = np.mean(vectors, axis=0)
-    print('Save mean vector')
-    vec = np.array([mean_vector])
-    np.save('vectors/' + userid + '.npy', vec)
-    print('Mean vector saved')
-    return vec
-
-
-def get_bert(userid, corpus):
-    print("Get the vectors of tweets")
-    vectors = [embed([tweet]) for tweet in corpus]
-    vectors = np.array(vectors)
-    print("Get the average of vectors")
-    mean_vec_bert = np.array([np.mean(vectors, axis=0)])
-    np.save('vectors/' + userid + '.npy', mean_vec_bert)
-    print('Bert vector saved')
-    return mean_vec_bert
-
