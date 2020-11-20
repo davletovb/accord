@@ -16,8 +16,8 @@ app.config["DEBUG"] = True
 
 @app.route('/', methods=['GET'])
 def home():
-    return '''<h1>Distant Reading Archive</h1>
-<p>A prototype API for distant reading of science fiction novels.</p>'''
+    return '''<h1>Welcome to accord API</h1>
+<p>A prototype API for text based matching.</p>'''
 
 
 # A route to return all of the available entries in our catalog.
@@ -54,7 +54,7 @@ def api_id():
     return user
 
 
-@app.route('/api/v1/resources/neighbors', methods=['GET'])
+@app.route('/api/v1/resources/users/neighbors', methods=['GET'])
 def api_neighbors():
     if 'userid' in request.args:
         userid = request.args['userid']
