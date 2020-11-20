@@ -63,3 +63,11 @@ def get_bert(userid, corpus):
         return mean_vec_bert
     else:
         print("Vector already exists")
+
+        
+def get_pron(text):
+    doc = nlp(text)
+    for token in doc:
+        if token.pos_ == 'PRON':
+            return token
+    return ""
