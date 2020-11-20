@@ -20,23 +20,7 @@ def home():
 <p>A prototype API for text based matching.</p>'''
 
 
-# A route to return all of the available entries in our catalog.
-@app.route('/api/v1/resources/users/all', methods=['GET'])
-def api_all():
-    users = []
-    with os.scandir('users/') as entries:
-        for entry in entries:
-            if (entry.name != "index.ann") and (entry.name != "index_map.json"):
-                with open('users/' + entry.name, 'r') as file:
-                    user_profile = json.load(file)
-                users.append(user_profile)
-            else:
-                pass
-
-    return jsonify(users)
-
-
-@app.route('/api/v1/resources/users/id', methods=['GET'])
+@app.route('/api/v1/resources/users', methods=['GET'])
 def api_id():
     # Check if an ID was provided as part of the URL.
     # If ID is provided, assign it to a variable.
@@ -51,7 +35,7 @@ def api_id():
     user = executor.submit(get_twitter_data.get_user, userid=userid).result()
     executor.submit(get_twitter_data.pre_process, userid=userid)
 
-    return user
+    return jsonify(user)
 
 
 @app.route('/api/v1/resources/users/neighbors', methods=['GET'])
