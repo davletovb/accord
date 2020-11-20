@@ -23,11 +23,26 @@ if not api:
 
 
 def get_user(userid):
-    if not path.exists('users/' + userid + '.json'):
+    if path.exists('users/' + userid + '.json'):
+        user_json = {}
         user = api.get_user(userid)
-        user_json = user._json
+        #user_json = user._json
+        user_json['userid'] = user.id
+        user_json['username'] = user.screen_name
+        user_json['name'] = user.name
+        user_json['location'] = user.location
+        user_json['bio'] = user.description
+        user_json['pronoun'] = get_vector.get_pron(user.description)
+        user_json['profile_picture'] = user.profile_image_url_https
+        user_json['verified'] = user.verified
+        user_json['protected'] = user.protected
+        user_json['followers_count'] = user.followers_count
+        user_json['following_count'] = user.friends_count
+        user_json['tweets_count'] = user.statuses_count
+        user_json['url'] = user.url
+        user_json['twitter_created_at'] = user.created_at
         with open('users/' + userid + '.json', 'w') as json_file:
-            json.dump(user_json, json_file, ensure_ascii=False)
+            json.dump(user_json, json_file, indent=4, ensure_ascii=False, default=str)
         print("User profile saved")
         return user_json
     else:
@@ -48,10 +63,6 @@ def pre_process(userid):
         ann_index.build_index('word')
     else:
         print("User data already exist")
-        cleaned_tweet_df = pd.read_json('data/' + userid + '.json')
-        words = cleaned_tweet_df['tokens'].tolist()
-        get_vector.mean_tfidf(userid, words)
-        ann_index.build_index('word')
 
 
 def get_tweets(userid, max_tweets=1000):
