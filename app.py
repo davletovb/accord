@@ -38,6 +38,23 @@ def api_id():
     return jsonify(user)
 
 
+@app.route('/api/v1/resources/users/profile', methods=['GET'])
+def api_user_profile():
+    # Check if an ID was provided as part of the URL.
+    # If ID is provided, assign it to a variable.
+    # If no ID is provided, display an error in the browser.
+    if 'userid' in request.args:
+        userid = request.args['userid']
+    else:
+        return page_not_found(404)
+
+    # Loop through the data and match results that fit the requested ID.
+    # IDs are unique, but other fields might return many results
+    user = get_twitter_data.get_user_profile(userid)
+
+    return jsonify(user)
+
+
 @app.route('/api/v1/resources/users/neighbors', methods=['GET'])
 def api_neighbors():
     if 'userid' in request.args:
@@ -45,7 +62,7 @@ def api_neighbors():
     else:
         return page_not_found(404)
 
-    results = ann_index.search_index(userid, 'word')
+    results = ann_index.search_index(userid, 'sentence')
 
     return jsonify(results)
 
