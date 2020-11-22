@@ -11,8 +11,8 @@ import ann_index
 import get_tokens
 import get_vector
 
-TWITTER_KEY = 'KEY'
-TWITTER_SECRET_KEY = 'KEY'
+TWITTER_KEY = 'rxZKr5xZ9S1b6bG4jIVXVkZqu'
+TWITTER_SECRET_KEY = 'fX1wkeXC9x7y9TcrZyBZx9b6LbVjh0500geu81ysMKpNSDkW2k'
 
 auth = tweepy.AppAuthHandler(TWITTER_KEY, TWITTER_SECRET_KEY)
 api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
@@ -23,7 +23,7 @@ if not api:
 
 
 def get_user(userid):
-    if path.exists('users/' + userid + '.json'):
+    if not path.exists('users/' + userid + '.json'):
         user_json = {}
         user = api.get_user(userid)
         #user_json = user._json
@@ -39,7 +39,7 @@ def get_user(userid):
         user_json['followers_count'] = user.followers_count
         user_json['following_count'] = user.friends_count
         user_json['tweets_count'] = user.statuses_count
-        user_json['url'] = user.url
+        user_json['url'] = user.entities['url']
         user_json['twitter_created_at'] = user.created_at
         with open('users/' + userid + '.json', 'w') as json_file:
             json.dump(user_json, json_file, indent=4, ensure_ascii=False, default=str)
@@ -49,6 +49,23 @@ def get_user(userid):
         with open('users/' + userid + '.json', 'r') as file:
             user_json = json.load(file)
         print("User profile exists")
+        return user_json
+
+
+def get_user_profile(userid):
+    if path.exists('users/' + userid + '.json'):
+        with open('users/' + userid + '.json', 'r') as file:
+            user_json = json.load(file)
+            print("User profile exists")
+
+        if path.exists('data/' + userid + '.json'):
+            tweet_df = pd.read_json('data/' + userid + '.json')
+            df = tweet_df.nlargest(5, 'like_count')[['tweet_id', 'tweet_date', 'like_count', 'retweet_count', 'text']]
+            print("User data exists")
+            print(df.head())
+
+        user_json['tweets'] = df.to_dict()
+
         return user_json
 
 
@@ -63,6 +80,10 @@ def pre_process(userid):
         ann_index.build_index('word')
     else:
         print("User data already exist")
+        # cleaned_tweet_df = pd.read_json('data/' + userid + '.json')
+        # words = cleaned_tweet_df['tokens'].tolist()
+        # get_vector.mean_tfidf(userid, words)
+        # ann_index.build_index('word')
 
 
 def get_tweets(userid, max_tweets=1000):
