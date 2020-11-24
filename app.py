@@ -2,8 +2,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 import flask
 from flask import request, jsonify
-import os
-import json
 
 import ann_index
 import get_twitter_data
@@ -50,9 +48,26 @@ def api_user_profile():
 
     # Loop through the data and match results that fit the requested ID.
     # IDs are unique, but other fields might return many results
-    user = get_twitter_data.get_user_profile(userid)
+    user = get_twitter_data.get_user(userid)
 
     return jsonify(user)
+
+
+@app.route('/api/v1/resources/users/tweets', methods=['GET'])
+def api_top_tweets():
+    # Check if an ID was provided as part of the URL.
+    # If ID is provided, assign it to a variable.
+    # If no ID is provided, display an error in the browser.
+    if 'userid' in request.args:
+        userid = request.args['userid']
+    else:
+        return page_not_found(404)
+
+    # Loop through the data and match results that fit the requested ID.
+    # IDs are unique, but other fields might return many results
+    tweets = get_twitter_data.get_top_tweets(userid)
+
+    return jsonify(tweets)
 
 
 @app.route('/api/v1/resources/users/neighbors', methods=['GET'])
@@ -62,7 +77,7 @@ def api_neighbors():
     else:
         return page_not_found(404)
 
-    results = ann_index.search_index(userid, 'sentence')
+    results = ann_index.search_index(userid, 'word')
 
     return jsonify(results)
 
