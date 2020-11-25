@@ -58,7 +58,7 @@ def get_top_tweets(userid):
         df = tweet_df.nlargest(5, 'like_count')[['tweet_id', 'tweet_date', 'like_count', 'retweet_count', 'text']]
         print("User data exists")
 
-        return df.to_dict()
+        return df.to_dict(orient='records')
 
 
 def pre_process(userid):
