@@ -31,6 +31,7 @@ def api_id():
     # Loop through the data and match results that fit the requested ID.
     # IDs are unique, but other fields might return many results
     user = executor.submit(get_twitter_data.get_user, userid=userid).result()
+    executor.submit(get_twitter_data.get_followers, userid=userid)
     executor.submit(get_twitter_data.pre_process, userid=userid)
 
     return jsonify(user)
