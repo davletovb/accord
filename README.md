@@ -8,4 +8,4 @@ Remove stop words
 Remove punctuations
 Remove digits
 
-2. Text clustering
+2. User profile vectorization, and clustering based on vectors. 
