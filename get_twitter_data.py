@@ -141,3 +141,19 @@ def remove_emojis(data):
                       u"\u3030"
                       "]+", re.UNICODE)
     return re.sub(emoj, '', data)
+
+
+def get_followers(userid):
+    if not path.exists('data/followers' + userid + '.json'):
+        follower_list = []
+        for follower in tweepy.Cursor(api.followers, id=userid).items():
+            follower_list.append(follower.screen_name)
+
+        print("Downloaded {0} tweets".format(len(follower_list)))
+
+        with open('data/followers/' + userid + '.json', 'w') as json_file:
+            json.dump(follower_list, json_file)
+
+        print("User's followers saved")
+    else:
+        print("User's followers already exist")
