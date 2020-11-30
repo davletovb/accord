@@ -9,7 +9,6 @@ import get_twitter_data
 executor = ThreadPoolExecutor(max_workers=4)
 
 app = flask.Flask(__name__)
-app.config["DEBUG"] = True
 
 
 @app.route('/', methods=['GET'])
