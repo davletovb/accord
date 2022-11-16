@@ -7,8 +7,10 @@ from sense2vec import Sense2VecComponent
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 nlp = spacy.load('en_core_web_lg')
-s2v = Sense2VecComponent(nlp.vocab).from_disk("s2v_reddit_2019_lg")
-nlp.add_pipe(s2v)
+# s2v = Sense2VecComponent(nlp.vocab).from_disk("/Users/user/Downloads/accord-main/s2v_reddit_2019_lg")
+# nlp.add_pipe(s2v)
+s2v = nlp.add_pipe("sense2vec")
+s2v.from_disk("/Users/user/Downloads/accord-main/s2v_reddit_2019_lg")
 
 
 def mean_tfidf(userid, words):
@@ -43,7 +45,7 @@ def mean_tfidf(userid, words):
         # mean_vec_tfidf = np.array([np.mean([word2vec[w] * word2weight[w] for w in tokens], axis=0)])
         np.save('vectors/word/' + userid + '.npy', mean_vec_tfidf)
         print('Vector saved')
-        print(mean_vec_tfidf)
+        #print(mean_vec_tfidf)
         return mean_vec_tfidf
     else:
         print("Vector already exists")

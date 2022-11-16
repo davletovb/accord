@@ -4,18 +4,20 @@ import sys
 from os import path
 
 import pandas as pd
-import preprocessor as prep
+#import preprocessor as prep
 import tweepy
+import datetime as dt
 
 import ann_index
 import get_tokens
 import get_vector
+import get_entities
 
-TWITTER_KEY = 'KEY'
-TWITTER_SECRET_KEY = 'KEY'
+TWITTER_KEY = 'rxZKr5xZ9S1b6bG4jIVXVkZqu'
+TWITTER_SECRET_KEY = 'fX1wkeXC9x7y9TcrZyBZx9b6LbVjh0500geu81ysMKpNSDkW2k'
 
 auth = tweepy.AppAuthHandler(TWITTER_KEY, TWITTER_SECRET_KEY)
-api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+api = tweepy.API(auth, wait_on_rate_limit=True)
 
 if not api:
     print("Can't Authenticate")
@@ -25,7 +27,7 @@ if not api:
 def get_user(userid):
     if not path.exists('users/' + userid + '.json'):
         user_json = {}
-        user = api.get_user(userid)
+        user = api.get_user(screen_name=userid)
         # user_json = user._json
         user_json['userid'] = user.id
         user_json['username'] = user.screen_name
@@ -33,14 +35,14 @@ def get_user(userid):
         user_json['location'] = user.location
         user_json['bio'] = user.description
         user_json['pronoun'] = get_vector.get_pron(user.description)
-        user_json['profile_picture'] = user.profile_image_url_https
+        user_json['profile_picture'] = user.profile_image_url_https.replace('_normal', '')
         user_json['verified'] = user.verified
         user_json['protected'] = user.protected
         user_json['followers_count'] = user.followers_count
         user_json['following_count'] = user.friends_count
         user_json['tweets_count'] = user.statuses_count
-        user_json['url'] = user.entities['url']
-        user_json['twitter_created_at'] = user.created_at
+        user_json['url'] =  user.url #user.entities['url']
+        user_json['twitter_created_at'] =  user.created_at
         with open('users/' + userid + '.json', 'w') as json_file:
             json.dump(user_json, json_file, indent=4, ensure_ascii=False, default=str)
         print("User profile saved")
@@ -53,16 +55,20 @@ def get_user(userid):
 
 
 def get_top_tweets(userid):
-    if path.exists('data/' + userid + '.json'):
-        tweet_df = pd.read_json('data/' + userid + '.json')
+    if path.exists('twitter_data/' + userid + '.json'):
+        tweet_df = pd.read_json('twitter_data/' + userid + '.json')
         df = tweet_df.nlargest(5, 'like_count')[['tweet_id', 'tweet_date', 'like_count', 'retweet_count', 'text']]
-        print("User data exists")
+        print("Getting top tweets for user: " + userid)
 
         return df.to_dict(orient='records')
+    else:
+        print("User data does not exist")
+        return None
 
 
 def pre_process(userid):
-    if not path.exists('data/' + userid + '.json'):
+    if not path.exists('twitter_data/' + userid + '.json'):
+        print("Getting tweets for user: " + userid)
         tweet_df = get_tweets(userid)
         cleaned_tweet_df = get_cleaned_tweets(userid, tweet_df)
         #tweets = cleaned_tweet_df['cleaned'].tolist()
@@ -77,10 +83,10 @@ def pre_process(userid):
 def get_tweets(userid, max_tweets=1000):
     tweet_list = []
 
-    for tweet in tweepy.Cursor(api.user_timeline, id=userid, include_rts=False, tweet_mode="extended").items(
+    for tweet in tweepy.Cursor(api.user_timeline, screen_name=userid, include_rts=False, tweet_mode="extended").items(
             max_tweets):
         tweet_list.append([
-            tweet.id, tweet.created_at.date(), tweet.favorite_count, tweet.retweet_count, tweet.full_text
+            tweet.id, tweet.created_at, tweet.favorite_count, tweet.retweet_count, tweet.full_text
         ])
 
     print("Downloaded {0} tweets".format(len(tweet_list)))
@@ -91,29 +97,40 @@ def get_tweets(userid, max_tweets=1000):
     # Create a column for hashtags
     tweet_df.insert(loc=4, column='hashtag',
                     value=tweet_df['text'].apply(lambda x: re.findall(r'\B#\w*[a-zA-Z]+\w*', x)))
+    
+    # Get entities from tweets
+    tweet_df = get_entities.get_all(tweet_df)
 
     return tweet_df
 
 
 def get_cleaned_tweets(userid, tweet_df):
-    punctuations = '''!()-=—!→–[]|{};:+`"“”\,<>/@#$%^&*_~'''
+    print("Cleaning tweets for user: " + userid)
+    punctuations = '''!0123456789()-=—!→–[]{};:+`'"“”\,<>.?/@#$%^&*_~'''
 
-    prep.set_options(prep.OPT.URL, prep.OPT.MENTION)
+    # prep.set_options(prep.OPT.URL, prep.OPT.MENTION)
 
-    cleaned = [prep.clean(text) for text in tweet_df['text']]
+    # remove urls and mentions without using preprocessor
+    tweet_df['cleaned'] = tweet_df['text'].apply(lambda x: re.sub(r'http\S+', '', x))
+    tweet_df['cleaned'] = tweet_df['cleaned'].apply(lambda x: re.sub(r'@\S+', '', x))
 
-    tweet_df['cleaned'] = cleaned
-    tweet_df['cleaned'] = tweet_df.cleaned.apply(
-        lambda x: x.translate(str.maketrans(punctuations, ' ' * len(punctuations))))
+    # cleaned = [prep.clean(text) for text in tweet_df['text']]
+
+    #tweet_df['cleaned'] = cleaned
+    # remove punctuations
+    tweet_df['cleaned'] = tweet_df['cleaned'].apply(lambda x: "".join([char for char in x if char not in punctuations]))
+    # tweet_df['cleaned'] = tweet_df.cleaned.apply(lambda x: x.translate(str.maketrans(punctuations, ' ' * len(punctuations))))
     tweet_df['cleaned'] = tweet_df.cleaned.apply(lambda x: remove_emojis(x))
     tweet_df['cleaned'] = tweet_df.cleaned.apply(lambda x: x.replace('...', ' '))
     tweet_df['cleaned'] = tweet_df.cleaned.apply(lambda x: ' '.join(x.split()))
 
     print("Tweets cleaned")
-    tokens = [get_tokens.get_tokens(tweet) for tweet in tweet_df['cleaned']]
-    tweet_df['tokens'] = tokens
+    #tokens = [get_tokens.get_tokens(tweet) for tweet in tweet_df['cleaned']]
+    tweet_df['tokens'] = tweet_df['cleaned'].apply(lambda x: get_tokens.get_tokens(x))
 
-    tweet_df.to_json('data/' + userid + '.json')
+
+
+    tweet_df.to_json('twitter_data/' + userid + '.json')
     print('Cleaned tweets saved')
 
     return tweet_df
@@ -144,14 +161,14 @@ def remove_emojis(data):
 
 
 def get_followers(userid):
-    if not path.exists('data/followers' + userid + '.json'):
+    if not path.exists('twitter_data/followers/' + userid + '.json'):
         follower_list = []
-        for follower in tweepy.Cursor(api.followers, id=userid).items():
+        for follower in tweepy.Cursor(api.followers, screen_name=userid).items():
             follower_list.append(follower.screen_name)
 
         print("Downloaded {0} tweets".format(len(follower_list)))
 
-        with open('data/followers/' + userid + '.json', 'w') as json_file:
+        with open('twitter_data/followers/' + userid + '.json', 'w') as json_file:
             json.dump(follower_list, json_file)
 
         print("User's followers saved")

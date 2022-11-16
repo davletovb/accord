@@ -40,7 +40,7 @@ import json
 #         return [self.labels[i] for i in indices[0]]
 
 
-def build_index(sub):
+def build_index(sub='word'):
     if sub == 'word':
         d = 300
     else:
@@ -48,13 +48,13 @@ def build_index(sub):
 
     a = AnnoyIndex(d, 'angular')
     index_map = {}
-
+    print('Adding new users vector into the index')
     with os.scandir('vectors/'+sub+'/') as entries:
         for i, entry in enumerate(entries):
             #if (entry.name != "index.ann") and (entry.name != "index_map.json"):
             vec = np.load('vectors/'+sub+'/' + entry.name)
-            print(entry.name)
-            print(vec)
+            # print(entry.name)
+            # print(vec)
             a.add_item(i, vec[0])
             index_map[i] = entry.name
 
@@ -66,7 +66,7 @@ def build_index(sub):
     print('ANN index built')
 
 
-def search_index(userid, sub):
+def search_index(userid, sub='word'):
     if sub == 'word':
         d = 300
     else:
@@ -78,7 +78,7 @@ def search_index(userid, sub):
 
     user_index = list(index_map.keys())[list(index_map.values()).index(userid + '.npy')]
     a.load('vectors/index_'+sub+'.ann')
-    neighbors = a.get_nns_by_item(int(user_index), 5)
+    neighbors = a.get_nns_by_item(int(user_index), 6)
     users = [index_map[str(n)].replace('.npy', '.json') for n in neighbors]
     result = []
 
@@ -87,4 +87,4 @@ def search_index(userid, sub):
             user_profile = json.load(file)
         result.append(user_profile)
 
-    return result
+    return result[1:] # remove the user itself
