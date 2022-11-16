@@ -1,6 +1,7 @@
 import json
 import re
 import sys
+import os
 from os import path
 
 import pandas as pd
@@ -13,8 +14,8 @@ import get_tokens
 import get_vector
 import get_entities
 
-TWITTER_KEY = 'rxZKr5xZ9S1b6bG4jIVXVkZqu'
-TWITTER_SECRET_KEY = 'fX1wkeXC9x7y9TcrZyBZx9b6LbVjh0500geu81ysMKpNSDkW2k'
+TWITTER_KEY = os.environ['TWITTER_KEY']
+TWITTER_SECRET_KEY = os.environ['TWITTER_SECRET_KEY']
 
 auth = tweepy.AppAuthHandler(TWITTER_KEY, TWITTER_SECRET_KEY)
 api = tweepy.API(auth, wait_on_rate_limit=True)
