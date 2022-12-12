@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Search Form -->
+<p>Accord is a web app that helps you find people on Twitter who share your interests.</p>
+<p>Enter a Twitter username to get started.</p>
+<form action="{{ url_for('search') }}" method="post">
+    <input type="text" name="userid" placeholder="Twitter username">
+    <input type="submit" value="Search">
+</form>
+
+
+{% endblock %}
