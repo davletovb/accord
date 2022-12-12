@@ -54,6 +54,13 @@ cat s2v_reddit_2019_lg.tar.gz.* > s2v_reddit_2019_lg.tar.gz
 python -m spacy download en_core_web_lg
 ```
 
+* Set environment variables:
+```
+export TWITTER_KEY = "TWITTER_KEY"
+export TWITTER_SECRET_KEY = "TWITTER_SECRET_KEY"
+```
+These API keys for Twitter can be obtained at: https://developer.twitter.com/en/portal/dashboard
+
 ## Milestones
 
 * User profile vectorization and clustering based on vectors done by taking weighted average of the tokens.
