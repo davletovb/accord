@@ -61,12 +61,12 @@ export TWITTER_SECRET_KEY = "TWITTER_SECRET_KEY"
 ```
 These API keys for Twitter can be obtained at: https://developer.twitter.com/en/portal/dashboard
 
-## Milestones
+## Roadmap
 
 * User profile vectorization and clustering based on vectors done by taking weighted average of the tokens.
 
 * Implemented the Annoy library, which was open-sourced by Spotify, to index the vectors and make the matching process faster and more efficient. It works extremely fast and gave better results than FAISS by Facebook.
 
-* Next step is to extract named entities from tweets, such as products and works of art (music, movie, books, etc). This will enable us to match users based on their specific interests and provide even more accurate recommendations.
+* Next step is to extract named entities from tweets, such as products and works of art (music, movie, books, etc). Also, classifying the tweets into set of given topics (entertainment, art, politics, science, technology, et.) These additonal information will enable us to match users based on their specific interests and provide even more accurate recommendations.
 
 * Also, developing a web application where users can login and give permission to access their tweets and see other similar Twitter accounts.
