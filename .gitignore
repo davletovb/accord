@@ -1,0 +1,8 @@
+.virtualenv
+__pycache__
+s2v_reddit_2019_lg
+twitter_data
+users
+vectors
+*.tar.gz
+*.tar.gz.*
