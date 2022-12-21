@@ -4,7 +4,7 @@
 
 Accord is a matching algorithm that uses natural language processing and machine learning techniques to analyze the content of tweets and identify users who have similar interests or opinions. By comparing the words and phrases used in tweets, the algorithm can determine which users are likely to have similar interests and can recommend connections between them. Accord is a tool for identifying connections between Twitter users and understanding the conversation around certain topics. Its ability to analyze text-based data makes it a valuable resource for businesses, individuals, and researchers interested in understanding how people use Twitter.
 
-## Applications
+## Applications and Use cases
 
 * One potential application of Accord is to help businesses identify potential customers who are interested in their products or services. By analyzing the tweets of users who are already customers, the algorithm can identify other users who are likely to be interested in the same products or services. This can help businesses target their marketing efforts more effectively and increase their chances of making successful sales.
 
@@ -48,6 +48,11 @@ You may run the following to merge the multi-part archives:
 cat s2v_reddit_2019_lg.tar.gz.* > s2v_reddit_2019_lg.tar.gz
 ```
 
+To extract the file archive:
+```
+tar -xzvf s2v_reddit_2019_lg.tar.gz
+```
+
 * After installing everything, download the models for spacy:
 
 ```
@@ -56,10 +61,11 @@ python -m spacy download en_core_web_lg
 
 * Set environment variables:
 ```
-export TWITTER_KEY = "TWITTER_KEY"
-export TWITTER_SECRET_KEY = "TWITTER_SECRET_KEY"
+export TWITTER_KEY="TWITTER_KEY"
+export TWITTER_SECRET_KEY="TWITTER_SECRET_KEY"
 ```
 These API keys for Twitter can be obtained at: https://developer.twitter.com/en/portal/dashboard
+Note: You’ll need to apply for Elevated access. You can learn more about the different access levels here: https://developer.twitter.com/en/docs/twitter-api/getting-started/about-twitter-api
 
 ## Roadmap
 
