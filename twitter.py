@@ -4,6 +4,9 @@ import os
 import pandas as pd
 import tweepy
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 TWITTER_KEY = os.environ.get('TWITTER_KEY')
 TWITTER_SECRET_KEY = os.environ.get('TWITTER_SECRET_KEY')
 
@@ -15,7 +18,7 @@ class TwitterAPI:
         self.api = tweepy.API(self.auth, wait_on_rate_limit=True)
 
         if not self.api:
-            print("Can't Authenticate")
+            logging.error("Can't Authenticate")
             sys.exit(-1)
 
     def get_user_profile(self, userid):
@@ -45,12 +48,12 @@ class TwitterAPI:
             with open('users/' + userid + '.json', 'w') as json_file:
                 json.dump(user_json, json_file, indent=4,
                           ensure_ascii=False, default=str)
-            print("User profile saved")
+            logging.info("User profile created")
             return user_json
         else:
             with open('users/' + userid + '.json', 'r') as file:
                 user_json = json.load(file)
-            print("User profile exists")
+            logging.info("User profile already exists")
             return user_json
 
     def get_user_tweets(self, userid, max_tweets=1000):
@@ -66,7 +69,7 @@ class TwitterAPI:
                 tweet.id, tweet.created_at, tweet.favorite_count, tweet.retweet_count, tweet.full_text
             ])
 
-        print("Downloaded {0} tweets".format(len(tweet_list)))
+        logging.info("Downloaded {0} tweets".format(len(tweet_list)))
 
         # load it into a pandas dataframe
         tweet_df = pd.DataFrame(tweet_list, columns=[
@@ -81,14 +84,14 @@ class TwitterAPI:
             for follower in tweepy.Cursor(self.api.followers, screen_name=userid).items():
                 follower_list.append(follower.screen_name)
 
-            print("Downloaded {0} tweets".format(len(follower_list)))
+            logging.info("Downloaded {0} tweets".format(len(follower_list)))
 
             with open('twitter_data/followers/' + userid + '.json', 'w') as json_file:
                 json.dump(follower_list, json_file)
 
-            print("User's followers saved")
+            logging.info("User's followers saved")
         else:
-            print("User's followers already exist")
+            logging.info("User's followers already exists")
 
     def get_top_tweets(self, userid):
 
@@ -96,9 +99,9 @@ class TwitterAPI:
             tweet_df = pd.read_json('twitter_data/' + userid + '.json')
             df = tweet_df.nlargest(5, 'like_count')[
                 ['tweet_id', 'tweet_date', 'like_count', 'retweet_count', 'text']]
-            print("Getting top tweets for user: " + userid)
+            logging.info("Getting top tweets for user: " + userid)
 
             return df.to_dict(orient='records')
         else:
-            print("User data does not exist")
+            logging.info("User's tweets not found")
             return None

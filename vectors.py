@@ -5,6 +5,9 @@ import json
 import spacy
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 nlp = spacy.load('en_core_web_lg')
 s2v = nlp.add_pipe("sense2vec")
 s2v.from_disk("s2v_reddit_2019_lg")
@@ -29,7 +32,7 @@ class TextVectorizer:
             tfidf.fit(tokens)
             # get_feature_names will be deprecated, use get_feature_names_out instead
             word2weight = dict(zip(tfidf.get_feature_names_out(), tfidf.idf_))
-            print('Weights computed')
+            logging.info("Weights computed")
             for word in all_words:
                 try:
                     doc = nlp(word)
@@ -38,7 +41,7 @@ class TextVectorizer:
                 except AttributeError:
                     word2vec[word] = np.zeros((300,), dtype='float32')
 
-            print('Vectors computed')
+            logging.info("Got vectors")
             mean_vec = []
             for w in tokens:
                 try:
@@ -47,33 +50,33 @@ class TextVectorizer:
                 except:
                     mean_vec.append(np.zeros((300,), dtype='float32'))
 
-            print("Got weighted vectors")
+            logging.info("Got weighted vectors")
             mean_vec_tfidf = np.array([np.mean(mean_vec, axis=0)])
             np.save('vectors/word/' + userid + '.npy', mean_vec_tfidf)
-            print('Vector saved')
+            logging.info("Saved vector")
             return mean_vec_tfidf
         else:
-            print("Vector already exists")
+            logging.info("Vector already exists")
 
     def calculate_vector_bert(userid, corpus) -> np.ndarray:
-        
+
         if not os.path.exists('vectors/sentence/'):
             os.makedirs('vectors/sentence/')
-        
+
         if not os.path.exists('vectors/sentence/' + userid + '.npy'):
             import tensorflow_hub as hub
             embed = hub.load(
                 "https://tfhub.dev/google/universal-sentence-encoder-large/5")
-            print("Get the vectors of tweets")
+            logging.info("Get vectors")
             vectors = [embed([tweet]) for tweet in corpus]
             vectors = np.array(vectors)
-            print("Get the average of vectors")
+            logging.info("Get the average of the vectors")
             mean_vec_bert = np.array([np.mean(vectors, axis=0)])
             np.save('vectors/sentence/' + userid + '.npy', mean_vec_bert)
-            print('Bert vector saved')
+            logging.info("Saved vector")
             return mean_vec_bert
         else:
-            print("Vector already exists")
+            logging.info("Vector already exists")
 
     def save_vector(self, text: str, vector: np.ndarray):
         # Save the given vector representation of the given text
@@ -100,7 +103,7 @@ class VectorIndex:
         if not os.path.exists('vectors'):
             os.makedirs('vectors')
 
-        print('Adding new users vector into the index')
+        logging.info('Adding new users vector into the index')
         with os.scandir('vectors/'+self.sub+'/') as entries:
             for i, entry in enumerate(entries):
                 vec = np.load('vectors/'+self.sub+'/' + entry.name)
@@ -112,7 +115,7 @@ class VectorIndex:
 
         self.index.build(10)
         self.index.save('vectors/index_'+self.sub+'.ann')
-        print('ANN index built')
+        logging.info('Index built')
 
     def search(self, userid):
 

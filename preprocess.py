@@ -1,14 +1,17 @@
+from twitter import TwitterAPI
+from vectors import VectorIndex, TextVectorizer
+from nltk.tokenize import TweetTokenizer
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
 from flair.models import SequenceTagger
 from flair.data import Sentence
 from transformers import pipeline, AutoTokenizer, AutoModelForTokenClassification
 import re
 from os import path
 
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import TweetTokenizer
-from vectors import VectorIndex, TextVectorizer
-from twitter import TwitterAPI
+import logging
+logging.basicConfig(level=logging.INFO)
+
 
 tokenizer = TweetTokenizer()
 lemmatizer = WordNetLemmatizer()
@@ -58,7 +61,7 @@ class PreProcessor:
             "xlm-roberta-large-finetuned-conll03-english")
         nlp = pipeline("ner", model=model, tokenizer=tokenizer)
 
-        print("Extracting entities from tweets")
+        logging.info("Extracting entities from tweets")
         entities = []
 
         for tweet in tweet_df['text']:
@@ -71,12 +74,12 @@ class PreProcessor:
         #entities = tweet_df['text'].apply(lambda x: nlp(x))
 
         tweet_df['entities'] = entities
-        print("Entities extracted")
+        logging.info("Entities extracted")
         return tweet_df
 
     def get_all_entities(self, tweet_df):
 
-        print("Extracting entities from tweets")
+        logging.info("Extracting entities from tweets")
         entities = []
 
         # load tagger
@@ -91,13 +94,13 @@ class PreProcessor:
                 tweet_entities.append(entity.text + "|" + entity.tag)
             entities.append(tweet_entities)
 
-        print("Entities extracted")
+        logging.info("Entities extracted")
         tweet_df['entities'] = entities
         return tweet_df
 
     def pre_process(self, userid):
         if not path.exists('twitter_data/' + userid + '.json'):
-            print("Getting tweets for user: " + userid)
+            logging.info("Getting tweets for user: " + userid)
             tweet_df = self.twitter.get_user_tweets(userid)
             # tweet_df = self.get_all_entities(tweet_df) # extract entities, for later use
             # Create a column for hashtags
@@ -111,10 +114,10 @@ class PreProcessor:
             # this method should only add the new vector, instead of rebuilding the whole index
             index.add_user()
         else:
-            print("User data already exist")
+            logging.info("User data already exist")
 
     def get_cleaned_tweets(self, userid, tweet_df):
-        print("Cleaning tweets for user: " + userid)
+        logging.info("Cleaning tweets for user: " + userid)
         punctuations = '''!0123456789()-=—!→–[]{};:+`'"“”\,<>.?/@#$%^&*_~'''
 
         # remove urls and mentions without using preprocessor
@@ -133,13 +136,13 @@ class PreProcessor:
         tweet_df['cleaned'] = tweet_df.cleaned.apply(
             lambda x: ' '.join(x.split()))
 
-        print("Tweets cleaned")
+        logging.info("Tweets cleaned")
         #tokens = [get_tokens.get_tokens(tweet) for tweet in tweet_df['cleaned']]
         tweet_df['tokens'] = tweet_df['cleaned'].apply(
             lambda x: self.get_tokens(x))
 
         tweet_df.to_json('twitter_data/' + userid + '.json')
-        print('Cleaned tweets saved')
+        logging.info("Cleaned tweets saved")
 
         return tweet_df
 

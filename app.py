@@ -1,11 +1,13 @@
+from preprocess import PreProcessor
+from twitter import TwitterAPI
+from vectors import VectorIndex
+from flask import request, jsonify, render_template
+import flask
 from concurrent.futures import ThreadPoolExecutor
 
-import flask
-from flask import request, jsonify, render_template
+import logging
+logging.basicConfig(level=logging.INFO)
 
-from vectors import VectorIndex
-from twitter import TwitterAPI
-from preprocess import PreProcessor
 
 executor = ThreadPoolExecutor(max_workers=4)
 
@@ -22,6 +24,8 @@ def index():
 def search():
 
     userid = request.form['userid']
+
+    logging.info(f'Getting user profile for {userid}')
 
     # use executor to run get_user, get_top_tweets, and pre_process in parallel
     twitter = TwitterAPI()
